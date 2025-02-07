@@ -22,6 +22,9 @@ export function registerRoutes(app: Express): Server {
     const course = await storage.createCourse({
       ...courseData,
       instructorId: req.user.id,
+      id: undefined, // Let the database generate the ID
+      tags: courseData.tags || null,
+      content: courseData.content || null,
     });
     res.status(201).json(course);
   });
@@ -43,7 +46,9 @@ export function registerRoutes(app: Express): Server {
     const enrollmentData = insertEnrollmentSchema.parse(req.body);
     const enrollment = await storage.createEnrollment({
       ...enrollmentData,
+      id: undefined, // Let the database generate the ID
       userId: req.user.id,
+      courseId: enrollmentData.courseId,
       progress: 0,
       completed: false,
       createdAt: new Date(),
