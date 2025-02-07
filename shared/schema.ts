@@ -34,6 +34,19 @@ export const enrollments = pgTable("enrollments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// New table for storing file metadata
+export const files = pgTable("files", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
+  originalName: text("original_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size").notNull(),
+  url: text("url").notNull(),
+  courseId: integer("course_id").references(() => courses.id),
+  uploaderId: integer("uploader_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -52,7 +65,18 @@ export const insertEnrollmentSchema = createInsertSchema(enrollments).pick({
   courseId: true,
 });
 
+export const insertFileSchema = createInsertSchema(files).pick({
+  filename: true,
+  originalName: true,
+  mimeType: true,
+  size: true,
+  url: true,
+  courseId: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Course = typeof courses.$inferSelect;
 export type Enrollment = typeof enrollments.$inferSelect;
+export type File = typeof files.$inferSelect;
+export type InsertFile = z.infer<typeof insertFileSchema>;

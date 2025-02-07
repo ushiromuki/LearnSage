@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertCourseSchema, insertEnrollmentSchema } from "@shared/schema";
+import { upload, saveFileMetadata } from "./upload";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -77,6 +78,47 @@ export function registerRoutes(app: Express): Server {
 
     await storage.updateEnrollmentProgress(parseInt(req.params.id), progress);
     res.sendStatus(200);
+  });
+
+  // File upload endpoints
+  app.post("/api/courses/:courseId/files", upload.single("file"), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Must be logged in to upload files");
+    }
+
+    const courseId = parseInt(req.params.courseId);
+    const course = await storage.getCourse(courseId);
+
+    if (!course) {
+      return res.status(404).send("Course not found");
+    }
+
+    if (course.instructorId !== req.user.id) {
+      return res.status(403).send("Only course instructors can upload files");
+    }
+
+    try {
+      const file = req.file as Express.MulterS3.File;
+      if (!file) {
+        return res.status(400).send("No file uploaded");
+      }
+
+      const savedFile = await saveFileMetadata(file, courseId, req.user.id);
+      res.status(201).json(savedFile);
+    } catch (error) {
+      console.error("File upload error:", error);
+      res.status(500).send("Failed to upload file");
+    }
+  });
+
+  app.get("/api/courses/:courseId/files", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Must be logged in to view files");
+    }
+
+    const courseId = parseInt(req.params.courseId);
+    const files = await storage.getFilesByCourse(courseId);
+    res.json(files);
   });
 
   const httpServer = createServer(app);

@@ -1,5 +1,5 @@
 import session from "express-session";
-import { users, courses, enrollments, type User, type Course, type Enrollment, type InsertUser } from "@shared/schema";
+import { users, courses, enrollments, files, type User, type Course, type Enrollment, type InsertUser, type File, type InsertFile } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
@@ -25,6 +25,11 @@ export interface IStorage {
   createEnrollment(enrollment: Enrollment): Promise<Enrollment>;
   getEnrollmentsByUser(userId: number): Promise<Enrollment[]>;
   updateEnrollmentProgress(id: number, progress: number): Promise<void>;
+
+  // File operations
+  createFile(file: InsertFile): Promise<File>;
+  getFilesByCourse(courseId: number): Promise<File[]>;
+  getFile(id: number): Promise<File | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -86,6 +91,20 @@ export class DatabaseStorage implements IStorage {
     await db.update(enrollments)
       .set({ progress })
       .where(eq(enrollments.id, id));
+  }
+
+  async createFile(insertFile: InsertFile): Promise<File> {
+    const [file] = await db.insert(files).values(insertFile).returning();
+    return file;
+  }
+
+  async getFilesByCourse(courseId: number): Promise<File[]> {
+    return await db.select().from(files).where(eq(files.courseId, courseId));
+  }
+
+  async getFile(id: number): Promise<File | undefined> {
+    const [file] = await db.select().from(files).where(eq(files.id, id));
+    return file;
   }
 }
 
