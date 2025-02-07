@@ -22,10 +22,10 @@ export function registerRoutes(app: Express): Server {
     const courseData = insertCourseSchema.parse(req.body);
     const course = await storage.createCourse({
       ...courseData,
+      id: 0, // Let the database generate the ID
       instructorId: req.user.id,
-      id: undefined, // Let the database generate the ID
-      tags: courseData.tags || null,
-      content: courseData.content || null,
+      tags: courseData.tags || [],
+      content: courseData.content || { sections: [] },
     });
     res.status(201).json(course);
   });
@@ -47,7 +47,7 @@ export function registerRoutes(app: Express): Server {
     const enrollmentData = insertEnrollmentSchema.parse(req.body);
     const enrollment = await storage.createEnrollment({
       ...enrollmentData,
-      id: undefined, // Let the database generate the ID
+      id: 0, // Let the database generate the ID
       userId: req.user.id,
       courseId: enrollmentData.courseId,
       progress: 0,

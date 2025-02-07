@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Course } from "@shared/schema";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
+import { CreateCourseForm } from "@/components/courses/create-course-form";
 
 export default function ManageCoursesPage() {
   const { user } = useAuth();
@@ -45,35 +46,46 @@ export default function ManageCoursesPage() {
         <h1 className="text-3xl font-bold">コース管理</h1>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>コース一覧</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {instructorCourses.length === 0 ? (
-                <p className="text-sm text-gray-500">作成したコースはありません</p>
-              ) : (
-                <div className="space-y-2">
-                  {instructorCourses.map((course) => (
-                    <button
-                      key={course.id}
-                      onClick={() => setSelectedCourse(course)}
-                      className={`w-full text-left p-4 rounded-lg border ${
-                        selectedCourse?.id === course.id
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:bg-gray-50"
-                      }`}
-                    >
-                      <h3 className="font-medium">{course.title}</h3>
-                      <p className="text-sm text-gray-500 line-clamp-2">
-                        {course.description}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>新規コース作成</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CreateCourseForm />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>コース一覧</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {instructorCourses.length === 0 ? (
+                  <p className="text-sm text-gray-500">作成したコースはありません</p>
+                ) : (
+                  <div className="space-y-2">
+                    {instructorCourses.map((course) => (
+                      <button
+                        key={course.id}
+                        onClick={() => setSelectedCourse(course)}
+                        className={`w-full text-left p-4 rounded-lg border ${
+                          selectedCourse?.id === course.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:bg-gray-50"
+                        }`}
+                      >
+                        <h3 className="font-medium">{course.title}</h3>
+                        <p className="text-sm text-gray-500 line-clamp-2">
+                          {course.description}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           {selectedCourse && (
             <div className="space-y-6">
