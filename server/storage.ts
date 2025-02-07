@@ -25,6 +25,7 @@ export interface IStorage {
   createEnrollment(enrollment: Enrollment): Promise<Enrollment>;
   getEnrollmentsByUser(userId: number): Promise<Enrollment[]>;
   updateEnrollmentProgress(id: number, progress: number): Promise<void>;
+  getAllEnrollments(): Promise<Enrollment[]>; // Added method signature
 
   // File operations
   createFile(file: InsertFile): Promise<File>;
@@ -91,6 +92,10 @@ export class DatabaseStorage implements IStorage {
     await db.update(enrollments)
       .set({ progress })
       .where(eq(enrollments.id, id));
+  }
+
+  async getAllEnrollments(): Promise<Enrollment[]> { // Added method implementation
+    return await db.select().from(enrollments);
   }
 
   async createFile(insertFile: InsertFile): Promise<File> {

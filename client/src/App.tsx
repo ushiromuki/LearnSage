@@ -8,12 +8,14 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import ManageCourses from "@/pages/courses/manage";
+import AnalyticsDashboard from "@/pages/analytics/dashboard";
 
 function Router() {
   return (
     <Switch>
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/courses/manage" component={ManageCourses} />
+      <ProtectedRoute path="/analytics" component={AnalyticsDashboard} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

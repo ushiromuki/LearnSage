@@ -7,18 +7,20 @@ import {
   LogOut,
   Settings,
   User,
+  BarChart,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "../ui/button";
 
 const instructorLinks = [
-  { href: "/courses/create", icon: BookOpen, label: "Create Course" },
-  { href: "/courses/manage", icon: Settings, label: "Manage Courses" },
+  { href: "/courses/create", icon: BookOpen, label: "コース作成" },
+  { href: "/courses/manage", icon: Settings, label: "コース管理" },
+  { href: "/analytics", icon: BarChart, label: "分析ダッシュボード" },
 ];
 
 const studentLinks = [
-  { href: "/courses", icon: BookOpen, label: "Browse Courses" },
-  { href: "/my-courses", icon: GraduationCap, label: "My Courses" },
+  { href: "/courses", icon: BookOpen, label: "コース一覧" },
+  { href: "/my-courses", icon: GraduationCap, label: "受講中のコース" },
 ];
 
 export function SidebarNav() {
@@ -26,9 +28,9 @@ export function SidebarNav() {
   const { user, logoutMutation } = useAuth();
 
   const links = [
-    { href: "/", icon: Home, label: "Dashboard" },
+    { href: "/", icon: Home, label: "ダッシュボード" },
     ...(user?.role === "instructor" ? instructorLinks : studentLinks),
-    { href: "/profile", icon: User, label: "Profile" },
+    { href: "/profile", icon: User, label: "プロフィール" },
   ];
 
   return (
@@ -64,7 +66,7 @@ export function SidebarNav() {
           onClick={() => logoutMutation.mutate()}
         >
           <LogOut className="mr-2 h-4 w-4" />
-          Logout
+          ログアウト
         </Button>
       </div>
     </div>

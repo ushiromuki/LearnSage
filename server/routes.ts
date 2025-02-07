@@ -22,7 +22,6 @@ export function registerRoutes(app: Express): Server {
     const courseData = insertCourseSchema.parse(req.body);
     const course = await storage.createCourse({
       ...courseData,
-      id: 0, // Let the database generate the ID
       instructorId: req.user.id,
       tags: courseData.tags || [],
       content: courseData.content || { sections: [] },
@@ -47,7 +46,6 @@ export function registerRoutes(app: Express): Server {
     const enrollmentData = insertEnrollmentSchema.parse(req.body);
     const enrollment = await storage.createEnrollment({
       ...enrollmentData,
-      id: 0, // Let the database generate the ID
       userId: req.user.id,
       courseId: enrollmentData.courseId,
       progress: 0,
@@ -78,6 +76,16 @@ export function registerRoutes(app: Express): Server {
 
     await storage.updateEnrollmentProgress(parseInt(req.params.id), progress);
     res.sendStatus(200);
+  });
+
+  // Add this endpoint after the existing enrollments endpoints
+  app.get("/api/enrollments/all", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "instructor") {
+      return res.status(403).send("Only instructors can view all enrollments");
+    }
+
+    const enrollments = await storage.getAllEnrollments();
+    res.json(enrollments);
   });
 
   // File upload endpoints
