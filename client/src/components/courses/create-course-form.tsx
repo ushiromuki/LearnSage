@@ -16,21 +16,24 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export function CreateCourseForm() {
   const { toast } = useToast();
+  const { user } = useAuth();
+
   const form = useForm({
     resolver: zodResolver(insertCourseSchema),
     defaultValues: {
       title: "",
       description: "",
-      tags: [],
+      tags: [] as string[],
       content: { sections: [] },
     },
   });
 
   const createCourseMutation = useMutation({
-    mutationFn: async (data: Course) => {
+    mutationFn: async (data: Omit<Course, "id" | "instructorId">) => {
       const res = await apiRequest("POST", "/api/courses", data);
       return res.json();
     },
@@ -88,21 +91,21 @@ export function CreateCourseForm() {
         <FormField
           control={form.control}
           name="tags"
-          render={({ field }) => (
+          render={({ field: { onChange, value, ...field } }) => (
             <FormItem>
               <FormLabel>タグ（カンマ区切り）</FormLabel>
               <FormControl>
                 <Input
                   {...field}
-                  value={field.value?.join(", ") || ""}
-                  onChange={(e) =>
-                    field.onChange(
-                      e.target.value
-                        .split(",")
-                        .map((tag) => tag.trim())
-                        .filter(Boolean)
-                    )
-                  }
+                  value={Array.isArray(value) ? value.join(", ") : ""}
+                  onChange={(e) => {
+                    const tags = e.target.value
+                      .split(",")
+                      .map((tag) => tag.trim())
+                      .filter(Boolean);
+                    onChange(tags);
+                  }}
+                  placeholder="例: プログラミング, Web開発, JavaScript"
                 />
               </FormControl>
               <FormMessage />
