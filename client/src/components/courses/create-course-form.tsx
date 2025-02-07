@@ -15,10 +15,12 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+import { useState } from "react";
 
 export function CreateCourseForm() {
   const { toast } = useToast();
+  const [newTag, setNewTag] = useState("");
 
   const form = useForm({
     resolver: zodResolver(insertCourseSchema),
@@ -51,6 +53,32 @@ export function CreateCourseForm() {
       });
     },
   });
+
+  const handleAddTag = () => {
+    const trimmedTag = newTag.trim();
+    if (!trimmedTag) return;
+
+    const currentTags = form.getValues("tags") || [];
+    if (currentTags.includes(trimmedTag)) {
+      toast({
+        title: "タグが重複しています",
+        description: "同じタグは追加できません",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    form.setValue("tags", [...currentTags, trimmedTag]);
+    setNewTag("");
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    const currentTags = form.getValues("tags");
+    form.setValue(
+      "tags",
+      currentTags.filter((tag) => tag !== tagToRemove)
+    );
+  };
 
   return (
     <Form {...form}>
@@ -86,33 +114,42 @@ export function CreateCourseForm() {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="tags"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>タグ（カンマ区切り）</FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  value={field.value ? field.value.join(", ") : ""}
-                  onChange={(e) => {
-                    const inputValue = e.target.value;
-                    const tags = inputValue
-                      ? inputValue
-                          .split(",")
-                          .map((tag) => tag.trim())
-                          .filter((tag) => tag.length > 0)
-                      : [];
-                    field.onChange(tags);
-                  }}
-                  placeholder="例: プログラミング, Web開発, JavaScript"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="space-y-2">
+          <FormLabel>タグ</FormLabel>
+          <div className="flex gap-2">
+            <Input
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              placeholder="新しいタグを入力"
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddTag();
+                }
+              }}
+            />
+            <Button type="button" onClick={handleAddTag}>
+              追加
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {form.watch("tags")?.map((tag) => (
+              <div
+                key={tag}
+                className="flex items-center gap-1 px-2 py-1 bg-primary/10 rounded"
+              >
+                <span>{tag}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveTag(tag)}
+                  className="text-primary hover:text-primary/80"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <Button
           type="submit"
