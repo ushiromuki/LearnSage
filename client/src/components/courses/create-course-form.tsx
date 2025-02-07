@@ -16,18 +16,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
 
 export function CreateCourseForm() {
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const form = useForm({
     resolver: zodResolver(insertCourseSchema),
     defaultValues: {
       title: "",
       description: "",
-      tags: [] as string[],
+      tags: [],
       content: { sections: [] },
     },
   });
@@ -91,19 +89,22 @@ export function CreateCourseForm() {
         <FormField
           control={form.control}
           name="tags"
-          render={({ field: { onChange, value, ...field } }) => (
+          render={({ field }) => (
             <FormItem>
               <FormLabel>タグ（カンマ区切り）</FormLabel>
               <FormControl>
                 <Input
                   {...field}
-                  value={Array.isArray(value) ? value.join(", ") : ""}
+                  value={field.value ? field.value.join(", ") : ""}
                   onChange={(e) => {
-                    const tags = e.target.value
-                      .split(",")
-                      .map((tag) => tag.trim())
-                      .filter(Boolean);
-                    onChange(tags);
+                    const inputValue = e.target.value;
+                    const tags = inputValue
+                      ? inputValue
+                          .split(",")
+                          .map((tag) => tag.trim())
+                          .filter((tag) => tag.length > 0)
+                      : [];
+                    field.onChange(tags);
                   }}
                   placeholder="例: プログラミング, Web開発, JavaScript"
                 />
