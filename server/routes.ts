@@ -2,11 +2,162 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertCourseSchema, insertEnrollmentSchema } from "@shared/schema";
+import {
+  insertCourseSchema,
+  insertEnrollmentSchema,
+  insertTenantSchema,
+  insertGroupSchema,
+  insertUserSchema,
+  csvUserImportSchema,
+} from "@shared/schema";
 import { upload, saveFileMetadata } from "./upload";
+import { parse } from "csv-parse";
+import { Readable } from "stream";
+import { hashPassword } from "./auth";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
+
+  // テナント関連のエンドポイント
+  app.post("/api/tenants", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Only administrators can create tenants");
+    }
+
+    const tenantData = insertTenantSchema.parse(req.body);
+    const tenant = await storage.createTenant(tenantData);
+    res.status(201).json(tenant);
+  });
+
+  app.get("/api/tenants", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Only administrators can view tenants");
+    }
+
+    const tenants = await storage.getAllTenants();
+    res.json(tenants);
+  });
+
+  // グループ関連のエンドポイント
+  app.post("/api/tenants/:tenantId/groups", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Only administrators can create groups");
+    }
+
+    const tenantId = parseInt(req.params.tenantId);
+    const tenant = await storage.getTenant(tenantId);
+    if (!tenant) {
+      return res.status(404).send("Tenant not found");
+    }
+
+    const groupData = insertGroupSchema.parse({ ...req.body, tenantId });
+    const group = await storage.createGroup(groupData);
+    res.status(201).json(group);
+  });
+
+  app.get("/api/tenants/:tenantId/groups", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Must be logged in to view groups");
+    }
+
+    const tenantId = parseInt(req.params.tenantId);
+    const groups = await storage.getGroupsByTenant(tenantId);
+    res.json(groups);
+  });
+
+  // ユーザー管理エンドポイント
+  app.post("/api/users", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Only administrators can create users");
+    }
+
+    const userData = insertUserSchema.parse(req.body);
+    const hashedPassword = await hashPassword(userData.password);
+    const user = await storage.createUser({
+      ...userData,
+      password: hashedPassword,
+    });
+    res.status(201).json(user);
+  });
+
+  // CSVによるユーザー一括インポート
+  app.post("/api/users/import", upload.single("file"), async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Only administrators can import users");
+    }
+
+    const file = req.file;
+    if (!file) {
+      return res.status(400).send("No file uploaded");
+    }
+
+    try {
+      const fileContent = file.buffer.toString();
+      const records: any[] = [];
+
+      const parser = parse(fileContent, {
+        columns: true,
+        skip_empty_lines: true,
+      });
+
+      for await (const record of parser) {
+        const validatedRecord = csvUserImportSchema.parse(record);
+        const tenant = await storage.getTenantByCode(validatedRecord.tenantCode);
+        if (!tenant) {
+          throw new Error(`Tenant not found: ${validatedRecord.tenantCode}`);
+        }
+
+        let groupId = undefined;
+        if (validatedRecord.groupCode) {
+          const group = await storage.getGroupByCode(tenant.id, validatedRecord.groupCode);
+          if (!group) {
+            throw new Error(`Group not found: ${validatedRecord.groupCode}`);
+          }
+          groupId = group.id;
+        }
+
+        records.push({
+          username: validatedRecord.username,
+          password: await hashPassword(validatedRecord.password),
+          name: validatedRecord.name,
+          role: validatedRecord.role,
+          tenantId: tenant.id,
+          groupId,
+        });
+      }
+
+      const users = await storage.importUsers(records);
+      res.status(201).json(users);
+    } catch (error) {
+      console.error("CSV import error:", error);
+      res.status(400).json({
+        message: "Failed to import users",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // テナントに属するユーザー一覧
+  app.get("/api/tenants/:tenantId/users", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Only administrators can view tenant users");
+    }
+
+    const tenantId = parseInt(req.params.tenantId);
+    const users = await storage.getUsersByTenant(tenantId);
+    res.json(users);
+  });
+
+  // グループに属するユーザー一覧
+  app.get("/api/groups/:groupId/users", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Only administrators can view group users");
+    }
+
+    const groupId = parseInt(req.params.groupId);
+    const users = await storage.getUsersByGroup(groupId);
+    res.json(users);
+  });
 
   // Courses
   app.get("/api/courses", async (_req, res) => {
@@ -34,6 +185,16 @@ export function registerRoutes(app: Express): Server {
     if (!course) {
       return res.status(404).send("Course not found");
     }
+
+    // テナントとグループのアクセス制御
+    if (req.user?.tenantId !== course.tenantId) {
+      return res.status(403).send("Access denied: Course not available for your tenant");
+    }
+
+    if (course.groupId && req.user?.groupId !== course.groupId) {
+      return res.status(403).send("Access denied: Course not available for your group");
+    }
+
     res.json(course);
   });
 
@@ -44,6 +205,21 @@ export function registerRoutes(app: Express): Server {
     }
 
     const enrollmentData = insertEnrollmentSchema.parse(req.body);
+
+    // コースのアクセス制御チェック
+    const course = await storage.getCourse(enrollmentData.courseId);
+    if (!course) {
+      return res.status(404).send("Course not found");
+    }
+
+    if (req.user.tenantId !== course.tenantId) {
+      return res.status(403).send("Access denied: Course not available for your tenant");
+    }
+
+    if (course.groupId && req.user.groupId !== course.groupId) {
+      return res.status(403).send("Access denied: Course not available for your group");
+    }
+
     const enrollment = await storage.createEnrollment({
       ...enrollmentData,
       userId: req.user.id,
@@ -78,7 +254,6 @@ export function registerRoutes(app: Express): Server {
     res.sendStatus(200);
   });
 
-  // Add this endpoint after the existing enrollments endpoints
   app.get("/api/enrollments/all", async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== "instructor") {
       return res.status(403).send("Only instructors can view all enrollments");

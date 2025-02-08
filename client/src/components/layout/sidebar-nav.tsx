@@ -8,9 +8,16 @@ import {
   Settings,
   User,
   BarChart,
+  Building2,
+  Users,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "../ui/button";
+
+const adminLinks = [
+  { href: "/admin/tenants", icon: Building2, label: "テナント管理" },
+  { href: "/admin/users", icon: Users, label: "ユーザー管理" },
+];
 
 const instructorLinks = [
   { href: "/courses/create", icon: BookOpen, label: "コース作成" },
@@ -27,9 +34,16 @@ export function SidebarNav() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
 
+  let roleLinks = studentLinks;
+  if (user?.role === "admin") {
+    roleLinks = adminLinks;
+  } else if (user?.role === "instructor") {
+    roleLinks = instructorLinks;
+  }
+
   const links = [
     { href: "/", icon: Home, label: "ダッシュボード" },
-    ...(user?.role === "instructor" ? instructorLinks : studentLinks),
+    ...roleLinks,
     { href: "/profile", icon: User, label: "プロフィール" },
   ];
 
