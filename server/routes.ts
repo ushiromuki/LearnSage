@@ -169,8 +169,8 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/courses", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== "instructor") {
-      return res.status(403).send("Only instructors can create courses");
+    if (!req.isAuthenticated() || (req.user.role !== "instructor" && req.user.role !== "admin")) {
+      return res.status(403).send("Only instructors and administrators can create courses");
     }
 
     const courseData = insertCourseSchema.parse(req.body);
