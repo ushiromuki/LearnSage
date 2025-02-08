@@ -17,6 +17,7 @@ import { Button } from "../ui/button";
 const adminLinks = [
   { href: "/admin/tenants", icon: Building2, label: "テナント管理" },
   { href: "/admin/users", icon: Users, label: "ユーザー管理" },
+  { href: "/analytics", icon: BarChart, label: "分析ダッシュボード" },
 ];
 
 const instructorLinks = [
