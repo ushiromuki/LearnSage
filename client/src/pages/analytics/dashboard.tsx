@@ -13,6 +13,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  LineChart,
+  Line,
 } from "recharts";
 import { Loader2 } from "lucide-react";
 
@@ -52,29 +54,35 @@ export default function AnalyticsDashboard() {
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
 
-  // コース別受講者数データを作成
-  const courseEnrollments = courses?.map((course) => ({
-    name: course.title,
-    count: enrollments?.filter((e) => e.courseId === course.id).length || 0,
-  }));
+  // コース別の統計データを作成
+  const courseStats = courses?.map((course) => {
+    const courseEnrollments = enrollments?.filter((e) => e.courseId === course.id) || [];
+    const averageProgress = courseEnrollments.reduce((sum, e) => sum + e.progress, 0) / (courseEnrollments.length || 1);
+    const completionRate = (courseEnrollments.filter(e => e.completed).length / (courseEnrollments.length || 1)) * 100;
 
-  // 完了率の計算
-  const completionRate =
-    enrollments?.reduce((acc, enrollment) => {
-      return acc + (enrollment.completed ? 1 : 0);
-    }, 0) || 0;
+    return {
+      name: course.title,
+      students: courseEnrollments.length,
+      avgProgress: Math.round(averageProgress),
+      completionRate: Math.round(completionRate),
+    };
+  });
 
+  // 全体の統計を計算
   const totalEnrollments = enrollments?.length || 0;
+  const completedEnrollments = enrollments?.filter(e => e.completed).length || 0;
   const completionPercentage = totalEnrollments
-    ? (completionRate / totalEnrollments) * 100
+    ? (completedEnrollments / totalEnrollments) * 100
     : 0;
+  const averageProgress = enrollments?.reduce((sum, e) => sum + e.progress, 0) || 0;
+  const totalAverageProgress = totalEnrollments ? averageProgress / totalEnrollments : 0;
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">分析ダッシュボード</h1>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader>
               <CardTitle>総コース数</CardTitle>
@@ -100,6 +108,17 @@ export default function AnalyticsDashboard() {
             <CardContent>
               <p className="text-2xl font-semibold">
                 {completionPercentage.toFixed(1)}%
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>平均進捗率</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-semibold">
+                {totalAverageProgress.toFixed(1)}%
               </p>
             </CardContent>
           </Card>
@@ -139,17 +158,38 @@ export default function AnalyticsDashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle>コース別受講者数</CardTitle>
+              <CardTitle>コース別受講者数と完了率</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={courseEnrollments}>
+                  <BarChart data={courseStats}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
-                    <YAxis />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" unit="%" />
                     <Tooltip />
-                    <Bar dataKey="count" fill="#8884d8" />
+                    <Bar yAxisId="left" dataKey="students" fill="#8884d8" name="受講者数" />
+                    <Bar yAxisId="right" dataKey="completionRate" fill="#82ca9d" name="完了率" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>コース別進捗状況</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={courseStats}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis unit="%" />
+                    <Tooltip />
+                    <Bar dataKey="avgProgress" fill="#ffc658" name="平均進捗率" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
