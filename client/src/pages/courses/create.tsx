@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 
 export default function CreateCoursePage() {
   const { toast } = useToast();
-  const [_, navigate] = useNavigate();
+  const [_, setLocation] = useLocation();
 
   const form = useForm<Course>({
     defaultValues: {
@@ -34,12 +34,12 @@ export default function CreateCoursePage() {
       if (!response.ok) throw new Error("Failed to create course");
 
       const course = await response.json();
-      queryClient.invalidateQueries(["/api/courses"]);
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
       toast({
         title: "コースを作成しました",
         description: "コースの編集画面に移動します",
       });
-      navigate(`/courses/manage`);
+      setLocation("/courses/manage");
     } catch (error) {
       toast({
         title: "エラー",
