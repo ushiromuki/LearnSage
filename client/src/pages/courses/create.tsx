@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 
 export default function CreateCoursePage() {
   const { toast } = useToast();
@@ -49,6 +51,21 @@ export default function CreateCoursePage() {
     }
   };
 
+  const addTag = (tag: string) => {
+    const currentTags = form.getValues("tags") || [];
+    if (tag && !currentTags.includes(tag)) {
+      form.setValue("tags", [...currentTags, tag]);
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    const currentTags = form.getValues("tags") || [];
+    form.setValue(
+      "tags",
+      currentTags.filter((tag) => tag !== tagToRemove)
+    );
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -82,6 +99,48 @@ export default function CreateCoursePage() {
                       placeholder="コースの説明を入力してください"
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="tags"
+              render={() => (
+                <FormItem>
+                  <FormLabel>タグ</FormLabel>
+                  <div className="space-y-2">
+                    <FormControl>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="タグを入力（Enterで追加）"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              const input = e.currentTarget;
+                              addTag(input.value);
+                              input.value = "";
+                            }
+                          }}
+                        />
+                      </div>
+                    </FormControl>
+                    <div className="flex flex-wrap gap-2">
+                      {form.watch("tags")?.map((tag) => (
+                        <Badge key={tag} variant="secondary">
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => removeTag(tag)}
+                            className="ml-1 hover:text-destructive"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

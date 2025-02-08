@@ -6,8 +6,8 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient } from "@/lib/queryClient";
-import { Loader2 } from "lucide-react";
-import { CreateCourseForm } from "@/components/courses/create-course-form";
+import { Loader2, Trash2, Edit } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function ManageCoursesPage() {
   const { user } = useAuth();
@@ -46,46 +46,55 @@ export default function ManageCoursesPage() {
         <h1 className="text-3xl font-bold">コース管理</h1>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>新規コース作成</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CreateCourseForm />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>コース一覧</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {instructorCourses.length === 0 ? (
-                  <p className="text-sm text-gray-500">作成したコースはありません</p>
-                ) : (
-                  <div className="space-y-2">
-                    {instructorCourses.map((course) => (
+          <Card>
+            <CardHeader>
+              <CardTitle>コース一覧</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {instructorCourses.length === 0 ? (
+                <p className="text-sm text-gray-500">作成したコースはありません</p>
+              ) : (
+                <div className="space-y-2">
+                  {instructorCourses.map((course) => (
+                    <div
+                      key={course.id}
+                      className={`flex items-center justify-between p-4 rounded-lg border ${
+                        selectedCourse?.id === course.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:bg-gray-50"
+                      }`}
+                    >
                       <button
-                        key={course.id}
                         onClick={() => setSelectedCourse(course)}
-                        className={`w-full text-left p-4 rounded-lg border ${
-                          selectedCourse?.id === course.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:bg-gray-50"
-                        }`}
+                        className="flex-1 text-left"
                       >
                         <h3 className="font-medium">{course.title}</h3>
                         <p className="text-sm text-gray-500 line-clamp-2">
                           {course.description}
                         </p>
                       </button>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {/* TODO: 編集機能の実装 */}}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {/* TODO: 削除機能の実装 */}}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {selectedCourse && (
             <div className="space-y-6">
