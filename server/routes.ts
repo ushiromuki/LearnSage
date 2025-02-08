@@ -12,6 +12,8 @@ import {
   insertQuizQuestionSchema,
   insertQuizAttemptSchema,
   insertLearningProgressSchema,
+  insertAchievementSchema,
+  insertUserAchievementSchema,
 } from "@shared/schema";
 import { upload, saveFileMetadata } from "./upload";
 import { parse } from "csv-parse";
@@ -401,6 +403,63 @@ export function registerRoutes(app: Express): Server {
     const userProgress = progress.find(p => p.userId === req.user.id);
     res.json(userProgress || null);
   });
+
+  // Achievement routes
+  app.get("/api/achievements", async (_req, res) => {
+    const achievements = await storage.getAllAchievements();
+    res.json(achievements);
+  });
+
+  app.post("/api/achievements", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Only administrators can create achievements");
+    }
+
+    const achievementData = insertAchievementSchema.parse(req.body);
+    const achievement = await storage.createAchievement(achievementData);
+    res.status(201).json(achievement);
+  });
+
+  // User achievement routes
+  app.get("/api/user/achievements", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Must be logged in to view achievements");
+    }
+
+    const userAchievements = await storage.getUserAchievements(req.user.id);
+    res.json(userAchievements);
+  });
+
+  app.post("/api/user/achievements/:achievementId/progress", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Must be logged in to update achievement progress");
+    }
+
+    const achievementId = parseInt(req.params.achievementId);
+    const { progress } = req.body;
+
+    if (typeof progress !== "number" || progress < 0) {
+      return res.status(400).send("Invalid progress value");
+    }
+
+    const achievement = await storage.getAchievement(achievementId);
+    if (!achievement) {
+      return res.status(404).send("Achievement not found");
+    }
+
+    const completed = progress >= achievement.requiredValue;
+
+    const userAchievement = await storage.updateUserAchievementProgress({
+      userId: req.user.id,
+      achievementId,
+      progress,
+      completed,
+      completedAt: completed ? new Date() : null,
+    });
+
+    res.json(userAchievement);
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;

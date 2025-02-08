@@ -10,9 +10,15 @@ import {
   BarChart,
   Building2,
   Users,
+  Trophy,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "../ui/button";
+
+const commonLinks = [
+  { href: "/", icon: Home, label: "ダッシュボード" },
+  { href: "/achievements", icon: Trophy, label: "実績" },
+];
 
 const adminLinks = [
   { href: "/admin/tenants", icon: Building2, label: "テナント管理" },
@@ -45,7 +51,7 @@ export function SidebarNav() {
   }
 
   const links = [
-    { href: "/", icon: Home, label: "ダッシュボード" },
+    ...commonLinks,
     ...roleLinks,
     { href: "/profile", icon: User, label: "プロフィール" },
   ];

@@ -12,6 +12,7 @@ import CreateCourse from "@/pages/courses/create";
 import AnalyticsDashboard from "@/pages/analytics/dashboard";
 import TenantsPage from "@/pages/admin/tenants";
 import UsersPage from "@/pages/admin/users";
+import AchievementsPage from "@/pages/achievements";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <ProtectedRoute path="/analytics" component={AnalyticsDashboard} />
       <ProtectedRoute path="/admin/tenants" component={TenantsPage} />
       <ProtectedRoute path="/admin/users" component={UsersPage} />
+      <ProtectedRoute path="/achievements" component={AchievementsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
