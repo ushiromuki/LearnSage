@@ -160,6 +160,93 @@ export const insertFileSchema = createInsertSchema(files).pick({
   courseId: true,
 });
 
+// クイズの問題テーブル
+export const quizQuestions = pgTable("quiz_questions", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").references(() => courses.id),
+  sectionIndex: integer("section_index").notNull(),
+  question: text("question").notNull(),
+  options: text("options").array().notNull(),
+  correctAnswer: integer("correct_answer").notNull(),
+  points: integer("points").default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ユーザーの回答履歴テーブル
+export const quizAttempts = pgTable("quiz_attempts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  questionId: integer("question_id").references(() => quizQuestions.id),
+  selectedAnswer: integer("selected_answer").notNull(),
+  isCorrect: boolean("is_correct").notNull(),
+  attemptedAt: timestamp("attempted_at").defaultNow(),
+});
+
+// 詳細な学習進捗テーブル
+export const learningProgress = pgTable("learning_progress", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  courseId: integer("course_id").references(() => courses.id),
+  sectionIndex: integer("section_index").notNull(),
+  timeSpent: integer("time_spent").default(0), // 秒単位
+  lastAccessedAt: timestamp("last_accessed_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// リレーションの追加
+export const quizQuestionsRelations = relations(quizQuestions, ({ one }) => ({
+  course: one(courses, {
+    fields: [quizQuestions.courseId],
+    references: [courses.id],
+  }),
+}));
+
+export const quizAttemptsRelations = relations(quizAttempts, ({ one }) => ({
+  user: one(users, {
+    fields: [quizAttempts.userId],
+    references: [users.id],
+  }),
+  question: one(quizQuestions, {
+    fields: [quizAttempts.questionId],
+    references: [quizQuestions.id],
+  }),
+}));
+
+export const learningProgressRelations = relations(learningProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [learningProgress.userId],
+    references: [users.id],
+  }),
+  course: one(courses, {
+    fields: [learningProgress.courseId],
+    references: [courses.id],
+  }),
+}));
+
+// Insert Schemas
+export const insertQuizQuestionSchema = createInsertSchema(quizQuestions).pick({
+  courseId: true,
+  sectionIndex: true,
+  question: true,
+  options: true,
+  correctAnswer: true,
+  points: true,
+});
+
+export const insertQuizAttemptSchema = createInsertSchema(quizAttempts).pick({
+  userId: true,
+  questionId: true,
+  selectedAnswer: true,
+  isCorrect: true,
+});
+
+export const insertLearningProgressSchema = createInsertSchema(learningProgress).pick({
+  userId: true,
+  courseId: true,
+  sectionIndex: true,
+  timeSpent: true,
+});
+
 // Types
 export type InsertTenant = z.infer<typeof insertTenantSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
@@ -172,3 +259,9 @@ export type Course = typeof courses.$inferSelect;
 export type Enrollment = typeof enrollments.$inferSelect;
 export type File = typeof files.$inferSelect;
 export type InsertFile = z.infer<typeof insertFileSchema>;
+export type InsertQuizQuestion = z.infer<typeof insertQuizQuestionSchema>;
+export type InsertQuizAttempt = z.infer<typeof insertQuizAttemptSchema>;
+export type InsertLearningProgress = z.infer<typeof insertLearningProgressSchema>;
+export type QuizQuestion = typeof quizQuestions.$inferSelect;
+export type QuizAttempt = typeof quizAttempts.$inferSelect;
+export type LearningProgress = typeof learningProgress.$inferSelect;

@@ -9,6 +9,9 @@ import {
   insertGroupSchema,
   insertUserSchema,
   csvUserImportSchema,
+  insertQuizQuestionSchema,
+  insertQuizAttemptSchema,
+  insertLearningProgressSchema,
 } from "@shared/schema";
 import { upload, saveFileMetadata } from "./upload";
 import { parse } from "csv-parse";
@@ -302,6 +305,101 @@ export function registerRoutes(app: Express): Server {
     const courseId = parseInt(req.params.courseId);
     const files = await storage.getFilesByCourse(courseId);
     res.json(files);
+  });
+
+  // クイズ関連のエンドポイント
+  app.post("/api/courses/:courseId/quiz-questions", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "instructor") {
+      return res.status(403).send("Only instructors can create quiz questions");
+    }
+
+    const courseId = parseInt(req.params.courseId);
+    const course = await storage.getCourse(courseId);
+
+    if (!course) {
+      return res.status(404).send("Course not found");
+    }
+
+    if (course.instructorId !== req.user.id) {
+      return res.status(403).send("Only course instructors can create quiz questions");
+    }
+
+    const questionData = insertQuizQuestionSchema.parse({
+      ...req.body,
+      courseId,
+    });
+
+    const question = await storage.createQuizQuestion(questionData);
+    res.status(201).json(question);
+  });
+
+  app.get("/api/courses/:courseId/quiz-questions", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Must be logged in to view quiz questions");
+    }
+
+    const courseId = parseInt(req.params.courseId);
+    const questions = await storage.getQuizQuestionsByCourse(courseId);
+    res.json(questions);
+  });
+
+  app.post("/api/quiz-attempts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Must be logged in to submit quiz attempts");
+    }
+
+    const attemptData = insertQuizAttemptSchema.parse({
+      ...req.body,
+      userId: req.user.id,
+    });
+
+    const attempt = await storage.submitQuizAttempt(attemptData);
+    res.status(201).json(attempt);
+  });
+
+  app.get("/api/quiz-attempts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Must be logged in to view quiz attempts");
+    }
+
+    const attempts = await storage.getQuizAttemptsByUser(req.user.id);
+    res.json(attempts);
+  });
+
+  // 学習進捗関連のエンドポイント
+  app.post("/api/courses/:courseId/progress", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Must be logged in to update progress");
+    }
+
+    const courseId = parseInt(req.params.courseId);
+    const course = await storage.getCourse(courseId);
+
+    if (!course) {
+      return res.status(404).send("Course not found");
+    }
+
+    const progressData = insertLearningProgressSchema.parse({
+      ...req.body,
+      userId: req.user.id,
+      courseId,
+    });
+
+    const progress = await storage.updateLearningProgress(progressData);
+    res.status(201).json(progress);
+  });
+
+  app.get("/api/courses/:courseId/progress", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Must be logged in to view progress");
+    }
+
+    const courseId = parseInt(req.params.courseId);
+    const progress = await storage.getLearningProgressByCourse(courseId);
+
+    // 現在のユーザーの進捗のみを返す
+    const userProgress = progress.find(p => p.userId === req.user.id);
+    res.json(userProgress || null);
   });
 
   const httpServer = createServer(app);

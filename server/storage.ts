@@ -1,9 +1,12 @@
 import session from "express-session";
 import {
   users, courses, enrollments, files, tenants, groups,
+  quizQuestions, quizAttempts, learningProgress,
   type User, type Course, type Enrollment, type InsertUser,
   type File, type InsertFile, type Tenant, type InsertTenant,
-  type Group, type InsertGroup
+  type Group, type InsertGroup, type QuizQuestion, type InsertQuizQuestion,
+  type QuizAttempt, type InsertQuizAttempt, type LearningProgress,
+  type InsertLearningProgress
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -53,6 +56,17 @@ export interface IStorage {
   createFile(file: InsertFile): Promise<File>;
   getFilesByCourse(courseId: number): Promise<File[]>;
   getFile(id: number): Promise<File | undefined>;
+
+  // Quiz関連の操作
+  createQuizQuestion(question: InsertQuizQuestion): Promise<QuizQuestion>;
+  getQuizQuestionsByCourse(courseId: number): Promise<QuizQuestion[]>;
+  submitQuizAttempt(attempt: InsertQuizAttempt): Promise<QuizAttempt>;
+  getQuizAttemptsByUser(userId: number): Promise<QuizAttempt[]>;
+
+  // 学習進捗関連の操作
+  updateLearningProgress(progress: InsertLearningProgress): Promise<LearningProgress>;
+  getLearningProgressByUser(userId: number): Promise<LearningProgress[]>;
+  getLearningProgressByCourse(courseId: number): Promise<LearningProgress[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -197,6 +211,72 @@ export class DatabaseStorage implements IStorage {
   async getFile(id: number): Promise<File | undefined> {
     const [file] = await db.select().from(files).where(eq(files.id, id));
     return file;
+  }
+
+  // Quiz関連のメソッド
+  async createQuizQuestion(question: InsertQuizQuestion): Promise<QuizQuestion> {
+    const [newQuestion] = await db.insert(quizQuestions).values(question).returning();
+    return newQuestion;
+  }
+
+  async getQuizQuestionsByCourse(courseId: number): Promise<QuizQuestion[]> {
+    return await db.select().from(quizQuestions).where(eq(quizQuestions.courseId, courseId));
+  }
+
+  async submitQuizAttempt(attempt: InsertQuizAttempt): Promise<QuizAttempt> {
+    const [newAttempt] = await db.insert(quizAttempts).values(attempt).returning();
+    return newAttempt;
+  }
+
+  async getQuizAttemptsByUser(userId: number): Promise<QuizAttempt[]> {
+    return await db.select().from(quizAttempts).where(eq(quizAttempts.userId, userId));
+  }
+
+  // 学習進捗関連のメソッド
+  async updateLearningProgress(progress: InsertLearningProgress): Promise<LearningProgress> {
+    const [existingProgress] = await db
+      .select()
+      .from(learningProgress)
+      .where(
+        and(
+          eq(learningProgress.userId, progress.userId),
+          eq(learningProgress.courseId, progress.courseId),
+          eq(learningProgress.sectionIndex, progress.sectionIndex)
+        )
+      );
+
+    if (existingProgress) {
+      const [updatedProgress] = await db
+        .update(learningProgress)
+        .set({
+          timeSpent: existingProgress.timeSpent + (progress.timeSpent || 0),
+          lastAccessedAt: new Date(),
+          ...(progress.timeSpent === 0 ? { completedAt: new Date() } : {})
+        })
+        .where(eq(learningProgress.id, existingProgress.id))
+        .returning();
+      return updatedProgress;
+    } else {
+      const [newProgress] = await db
+        .insert(learningProgress)
+        .values(progress)
+        .returning();
+      return newProgress;
+    }
+  }
+
+  async getLearningProgressByUser(userId: number): Promise<LearningProgress[]> {
+    return await db
+      .select()
+      .from(learningProgress)
+      .where(eq(learningProgress.userId, userId));
+  }
+
+  async getLearningProgressByCourse(courseId: number): Promise<LearningProgress[]> {
+    return await db
+      .select()
+      .from(learningProgress)
+      .where(eq(learningProgress.courseId, courseId));
   }
 }
 
