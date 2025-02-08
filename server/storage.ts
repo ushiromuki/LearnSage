@@ -1,12 +1,12 @@
 import session from "express-session";
-import {
-  users, courses, enrollments, files, tenants, groups,
-  quizQuestions, quizAttempts, learningProgress,
+import { users, courses, enrollments, files, tenants, groups,
+  quizQuestions, quizAttempts, learningProgress, achievements, userAchievements,
   type User, type Course, type Enrollment, type InsertUser,
   type File, type InsertFile, type Tenant, type InsertTenant,
   type Group, type InsertGroup, type QuizQuestion, type InsertQuizQuestion,
   type QuizAttempt, type InsertQuizAttempt, type LearningProgress,
-  type InsertLearningProgress
+  type InsertLearningProgress, type Achievement, type InsertAchievement,
+  type UserAchievement, type InsertUserAchievement
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -25,6 +25,13 @@ export interface IStorage {
   getUsersByTenant(tenantId: number): Promise<User[]>;
   getUsersByGroup(groupId: number): Promise<User[]>;
   importUsers(users: InsertUser[]): Promise<User[]>;
+
+  // Achievement operations
+  createAchievement(achievement: InsertAchievement): Promise<Achievement>;
+  getAchievement(id: number): Promise<Achievement | undefined>;
+  getAllAchievements(): Promise<Achievement[]>;
+  getUserAchievements(userId: number): Promise<UserAchievement[]>;
+  updateUserAchievementProgress(data: InsertUserAchievement): Promise<UserAchievement>;
 
   // Tenant operations
   createTenant(tenant: InsertTenant): Promise<Tenant>;
@@ -77,6 +84,52 @@ export class DatabaseStorage implements IStorage {
       pool,
       createTableIfMissing: true,
     });
+  }
+
+  // Achievement operations
+  async createAchievement(achievement: InsertAchievement): Promise<Achievement> {
+    const [newAchievement] = await db.insert(achievements).values(achievement).returning();
+    return newAchievement;
+  }
+
+  async getAchievement(id: number): Promise<Achievement | undefined> {
+    const [achievement] = await db.select().from(achievements).where(eq(achievements.id, id));
+    return achievement;
+  }
+
+  async getAllAchievements(): Promise<Achievement[]> {
+    return await db.select().from(achievements);
+  }
+
+  async getUserAchievements(userId: number): Promise<UserAchievement[]> {
+    return await db.select().from(userAchievements).where(eq(userAchievements.userId, userId));
+  }
+
+  async updateUserAchievementProgress(data: InsertUserAchievement): Promise<UserAchievement> {
+    const [existingProgress] = await db
+      .select()
+      .from(userAchievements)
+      .where(
+        and(
+          eq(userAchievements.userId, data.userId),
+          eq(userAchievements.achievementId, data.achievementId)
+        )
+      );
+
+    if (existingProgress) {
+      const [updatedProgress] = await db
+        .update(userAchievements)
+        .set(data)
+        .where(eq(userAchievements.id, existingProgress.id))
+        .returning();
+      return updatedProgress;
+    } else {
+      const [newProgress] = await db
+        .insert(userAchievements)
+        .values(data)
+        .returning();
+      return newProgress;
+    }
   }
 
   // Tenant operations
